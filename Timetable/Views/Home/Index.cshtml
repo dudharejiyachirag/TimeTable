@@ -1,0 +1,203 @@
+﻿@model Timetable.Models.CSCM.DynamicTimeTable.TimeTableCSCM
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        background-color: #f8f9fa;
+    }
+
+    h2 {
+        color: #333;
+        text-align: center;
+    }
+
+    form {
+        width: 50%;
+        margin: auto;
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    input {
+        width: 100%;
+        padding: 8px;
+        margin: 5px 0;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+    }
+
+    button {
+        padding: 10px;
+        margin-top: 10px;
+        width: 100%;
+        background-color: #007bff;
+        border: none;
+        color: white;
+        font-size: 16px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+
+    #subjectContainer div {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 8px;
+    }
+
+    #error-message, #working-days-error, #hours-error {
+        color: red;
+        font-weight: bold;
+        display: none;
+    }
+
+    table {
+        width: 80%;
+        margin: auto;
+        border-collapse: collapse;
+        background: white;
+        box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+    }
+
+    table, th, td {
+        border: 1px solid black;
+        text-align: center;
+        padding: 10px;
+    }
+
+    th {
+        background-color: #007bff;
+        color: white;
+    }
+
+    td {
+        font-weight: bold;
+    }
+</style>
+
+<h2>Dynamic Time-Table Generator</h2>
+
+<form asp-action="GenerateTimeTable" method="post" onsubmit="return validateInputs()">
+    <div>
+        <label>Working Days (1-7):</label>
+        <input asp-for="WorkingDays" id="workingDays" type="number" min="1" max="7" required oninput="checkWorkingDays()" />
+        <p id="working-days-error">⚠️ Working days must be between 1 and 7.</p>
+    </div>
+
+    <div id="subjectsPerDayDiv" style="display: none;">
+        <label>Subjects Per Day (Max 8):</label>
+        <input asp-for="SubjectsPerDay" id="subjectsPerDay" type="number" min="1" max="8" required />
+    </div>
+
+    <div>
+        <label>Total Subjects:</label>
+        <input asp-for="TotalSubjects" id="totalSubjects" type="number" required />
+    </div>
+
+    <h3>Enter Subjects & Hours</h3>
+
+    <div id="subjectContainer">
+        <div>
+            <input type="text" name="Subjects[0].SubjectName" placeholder="Subject Name" required />
+            <input type="number" name="Subjects[0].AssignedHours" placeholder="Hours" required class="subject-hour" />
+        </div>
+    </div>
+
+    <button type="button" onclick="addSubject()">+ Add Subject</button>
+    <p id="hours-error">⚠️ Total assigned hours exceed the required hours!</p>
+
+    <br /><br />
+    <button type="submit">Generate TimeTable</button>
+</form>
+
+@if (ViewBag.Error != null)
+{
+    <p style="color:red; text-align: center;">@ViewBag.Error</p>
+}
+
+@if (ViewBag.TimeTable != null)
+{
+    <h3 style="text-align: center;">Generated Time Table</h3>
+    <table>
+        @foreach (var row in ViewBag.TimeTable)
+        {
+            <tr>
+                @foreach (var subject in row)
+                {
+                    <td>@subject</td>
+                }
+            </tr>
+        }
+    </table>
+}
+
+<script>
+    let subjectIndex = 1;
+
+    function addSubject() {
+        let container = document.getElementById("subjectContainer");
+        let div = document.createElement("div");
+        div.innerHTML = `
+            <input type="text" name="Subjects[${subjectIndex}].SubjectName" placeholder="Subject Name" required />
+            <input type="number" name="Subjects[${subjectIndex}].AssignedHours" placeholder="Hours" required class="subject-hour" oninput="validateHours()" />
+        `;
+        container.appendChild(div);
+        subjectIndex++;
+    }
+
+    function checkWorkingDays() {
+        let workingDays = document.getElementById("workingDays").value;
+        let errorMessage = document.getElementById("working-days-error");
+        let subjectsPerDayDiv = document.getElementById("subjectsPerDayDiv");
+
+        if (workingDays > 7) {
+            errorMessage.style.display = "block";
+        } else {
+            errorMessage.style.display = "none";
+        }
+
+        // Show "Subjects Per Day" field dynamically when the user enters data
+        subjectsPerDayDiv.style.display = "block";
+    }
+
+    function validateHours() {
+        let workingDays = document.getElementById("workingDays").value || 1;
+        let subjectsPerDay = document.getElementById("subjectsPerDay").value || 1;
+        let totalHoursAllowed = workingDays * subjectsPerDay;
+
+        let inputs = document.querySelectorAll(".subject-hour");
+        let assignedHours = 0;
+
+        inputs.forEach(input => {
+            assignedHours += parseInt(input.value || 0);
+        });
+
+        let errorMessage = document.getElementById("hours-error");
+
+        if (assignedHours > totalHoursAllowed) {
+            errorMessage.style.display = "block";
+        } else {
+            errorMessage.style.display = "none";
+        }
+    }
+
+    function validateInputs() {
+        checkWorkingDays();
+        validateHours();
+
+        let workingDaysError = document.getElementById("working-days-error").style.display;
+        let hoursError = document.getElementById("hours-error").style.display;
+
+        if (workingDaysError === "block" || hoursError === "block") {
+            return false;
+        }
+
+        return true;
+    }
+</script>
